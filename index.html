@@ -45,6 +45,9 @@
     </form>
 
     <button class="delete-btn" onclick="deleteSelectedRows()">Delete Selected Rows</button>
+    <button onclick="exportData()">Export Data</button>
+    <input type="file" id="importFile" accept=".json" onchange="importData(event)">
+    <label for="importFile"><small>Import JSON</small></label>
 
     <table id="historyTable">
       <thead>
@@ -170,8 +173,41 @@
       form.reset();
     });
 
+    // Export data as JSON file
+    function exportData() {
+      const dataStr = JSON.stringify(historyData, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "financeHistory.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Import data from JSON file
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            historyData = imported;
+            localStorage.setItem("financeHistory", JSON.stringify(historyData));
+            renderTable();
+            alert("Data imported successfully!");
+          } else {
+            alert("Invalid JSON format.");
+          }
+        } catch {
+          alert("Error reading file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
     // Render table on load
     renderTable();
-  </script>
-</body>
-</html>
+  </script
