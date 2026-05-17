@@ -14,138 +14,179 @@
     th { background: #eee; }
     .summary-box { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
     .delete-btn { background: #d9534f; color: white; border: none; padding: 8px 12px; cursor: pointer; margin-top: 10px; }
+    #trackerSection { display: none; }
   </style>
 </head>
 <body>
-  <h2>Monthly Finance Tracker</h2>
-  <form id="financeForm">
-    <label>Month:</label>
-    <input type="text" id="month" placeholder="e.g. May 2026" required>
-
-    <label>Rental Income:</label>
-    <input type="number" id="rental" required>
-
-    <label>Investments:</label>
-    <input type="number" id="investments" required>
-
-    <label>Bill Payments:</label>
-    <input type="number" id="bills" required>
-
-    <button type="submit">Save Monthly Data</button>
-  </form>
-
-  <!-- Delete button in the middle section -->
-  <button class="delete-btn" onclick="deleteSelectedRows()">Delete Selected Rows</button>
-
-  <table id="historyTable">
-    <thead>
-      <tr>
-        <th>Select</th>
-        <th>Month</th>
-        <th>Income (₹)</th>
-        <th>Expenses (₹)</th>
-        <th>Investments (₹)</th>
-        <th>Net Balance (₹)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <!-- ✅ Summary section -->
-  <div id="overallSummary" class="summary-box">
-    <h3>Overall Summary</h3>
-    <p id="totalIncome"></p>
-    <p id="totalExpenses"></p>
-    <p id="totalInvestments"></p>
-    <p id="totalNet"></p>
+  <!-- Login -->
+  <div id="loginSection">
+    <h2>Login</h2>
+    <label>Username:</label>
+    <input type="text" id="loginUser" required>
+    <label>Password:</label>
+    <input type="password" id="loginPass" required>
+    <button id="loginBtn">Login</button>
+    <p id="loginMessage" style="color:red;"></p>
   </div>
 
+  <!-- Tracker -->
+  <div id="trackerSection">
+    <h2>Monthly Finance Tracker</h2>
+    <form id="financeForm">
+      <label>Month:</label>
+      <input type="text" id="month" placeholder="e.g. May 2026" required>
+      <label>Rental Income:</label>
+      <input type="number" id="rental" required>
+      <label>Investments:</label>
+      <input type="number" id="investments" required>
+      <label>Bill Payments:</label>
+      <input type="number" id="bills" required>
+      <button type="submit">Save Monthly Data</button>
+    </form>
+
+    <button class="delete-btn" onclick="deleteSelectedRows()">Delete Selected Rows</button>
+
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Select</th>
+          <th>Month</th>
+          <th>Income (₹)</th>
+          <th>Expenses (₹)</th>
+          <th>Investments (₹)</th>
+          <th>Net Balance (₹)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="overallSummary" class="summary-box">
+      <h3>Overall Summary</h3>
+      <p id="totalIncome"></p>
+      <p id="totalExpenses"></p>
+      <p id="totalInvestments"></p>
+      <p id="totalNet"></p>
+    </div>
+  </div>
+
+  <!-- Script -->
   <script>
-    const form = document.getElementById("financeForm");
-    const historyTableBody = document.querySelector("#historyTable tbody");
-    const totalIncomeEl = document.getElementById("totalIncome");
-    const totalExpensesEl = document.getElementById("totalExpenses");
-    const totalInvestmentsEl = document.getElementById("totalInvestments");
-    const totalNetEl = document.getElementById("totalNet");
+    window.onload = function() {
+      const adminUser = "sacsblr";
+      const adminPass = "admin";
 
-    let historyData = JSON.parse(localStorage.getItem("financeHistory")) || [];
+      function login() {
+        const user = document.getElementById("loginUser").value.trim();
+        const pass = document.getElementById("loginPass").value.trim();
+        if (user === adminUser && pass === adminPass) {
+          document.getElementById("loginSection").style.display = "none";
+          document.getElementById("trackerSection").style.display = "block";
+          renderTable();
+        } else {
+          document.getElementById("loginMessage").textContent = "Invalid username or password.";
+        }
+      }
 
-    function renderTable() {
-      historyTableBody.innerHTML = "";
-      let sumIncome = 0, sumExpenses = 0, sumInvestments = 0, sumNet = 0;
+      document.getElementById("loginBtn").addEventListener("click", login);
 
-      historyData.forEach((entry, index) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><input type="checkbox" class="rowCheckbox" data-index="${index}"></td>
-          <td>${entry.month}</td>
-          <td>${entry.income}</td>
-          <td>${entry.expenses}</td>
-          <td>${entry.investments}</td>
-          <td>${entry.netBalance}</td>
-        `;
-        historyTableBody.appendChild(row);
+      const form = document.getElementById("financeForm");
+      const historyTableBody = document.querySelector("#historyTable tbody");
+      const totalIncomeEl = document.getElementById("totalIncome");
+      const totalExpensesEl = document.getElementById("totalExpenses");
+      const totalInvestmentsEl = document.getElementById("totalInvestments");
+      const totalNetEl = document.getElementById("totalNet");
 
-        sumIncome += entry.income;
-        sumExpenses += entry.expenses;
-        sumInvestments += entry.investments;
-        sumNet += entry.netBalance;
+      let historyData = JSON.parse(localStorage.getItem("financeHistory")) || [];
+
+      function formatCurrency(value) {
+        return value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function renderTable() {
+        // Sort by month (oldest first, newest last)
+        historyData.sort((a, b) => {
+          const dateA = new Date(a.month + " 1");
+          const dateB = new Date(b.month + " 1");
+          return dateA - dateB;
+        });
+
+        historyTableBody.innerHTML = "";
+        let sumIncome = 0, sumExpenses = 0, sumInvestments = 0, sumNet = 0;
+
+        historyData.forEach((entry, index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input type="checkbox" class="rowCheckbox" data-index="${index}"></td>
+            <td>${entry.month}</td>
+            <td>₹${formatCurrency(entry.income)}</td>
+            <td>₹${formatCurrency(entry.expenses)}</td>
+            <td>₹${formatCurrency(entry.investments)}</td>
+            <td>₹${formatCurrency(entry.netBalance)}</td>
+          `;
+          historyTableBody.appendChild(row);
+
+          sumIncome += entry.income;
+          sumExpenses += entry.expenses;
+          sumInvestments += entry.investments;
+          sumNet += entry.netBalance;
+        });
+
+        if (historyData.length === 0) {
+          totalIncomeEl.textContent = "Total Income: No data yet";
+          totalExpensesEl.textContent = "Total Expenses: No data yet";
+          totalInvestmentsEl.textContent = "Total Investments: No data yet";
+          totalNetEl.textContent = "Cumulative Net Balance: No data yet";
+        } else {
+          totalIncomeEl.textContent = "Total Income: ₹" + formatCurrency(sumIncome);
+          totalExpensesEl.textContent = "Total Expenses: ₹" + formatCurrency(sumExpenses);
+          totalInvestmentsEl.textContent = "Total Investments: ₹" + formatCurrency(sumInvestments);
+          totalNetEl.textContent = "Cumulative Net Balance: ₹" + formatCurrency(sumNet);
+        }
+      }
+
+      function deleteSelectedRows() {
+        const checkboxes = document.querySelectorAll(".rowCheckbox:checked");
+        if (checkboxes.length === 0) {
+          alert("Please select at least one row to delete.");
+          return;
+        }
+        const indicesToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
+        indicesToDelete.sort((a, b) => b - a).forEach(idx => historyData.splice(idx, 1));
+        localStorage.setItem("financeHistory", JSON.stringify(historyData));
+        renderTable();
+      }
+
+      form.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const month = document.getElementById("month").value.trim();
+        const rental = parseFloat(document.getElementById("rental").value) || 0;
+        const investments = parseFloat(document.getElementById("investments").value) || 0;
+        const bills = parseFloat(document.getElementById("bills").value) || 0;
+
+        const income = rental;
+        const expenses = bills;
+        const totalInvestments = investments;
+        const netBalance = income - (expenses + totalInvestments);
+
+        const entry = { month, income, expenses, investments: totalInvestments, netBalance };
+
+        const existingIndex = historyData.findIndex(e => e.month.toLowerCase() === month.toLowerCase());
+        if (existingIndex !== -1) {
+          historyData[existingIndex] = entry;
+          alert(`Data for "${month}" has been updated.`);
+        } else {
+          historyData.push(entry);
+        }
+
+        localStorage.setItem("financeHistory", JSON.stringify(historyData));
+        renderTable();
+        form.reset();
       });
 
-      if (historyData.length === 0) {
-        totalIncomeEl.textContent = "Total Income: No data yet";
-        totalExpensesEl.textContent = "Total Expenses: No data yet";
-        totalInvestmentsEl.textContent = "Total Investments: No data yet";
-        totalNetEl.textContent = "Cumulative Net Balance: No data yet";
-      } else {
-        totalIncomeEl.textContent = "Total Income: ₹" + sumIncome;
-        totalExpensesEl.textContent = "Total Expenses: ₹" + sumExpenses;
-        totalInvestmentsEl.textContent = "Total Investments: ₹" + sumInvestments;
-        totalNetEl.textContent = "Cumulative Net Balance: ₹" + sumNet;
-      }
-    }
-
-    function deleteSelectedRows() {
-      const checkboxes = document.querySelectorAll(".rowCheckbox:checked");
-      if (checkboxes.length === 0) {
-        alert("Please select at least one row to delete.");
-        return;
-      }
-      const indicesToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-      indicesToDelete.sort((a, b) => b - a).forEach(idx => historyData.splice(idx, 1));
-      localStorage.setItem("financeHistory", JSON.stringify(historyData));
+      window.deleteSelectedRows = deleteSelectedRows;
       renderTable();
-    }
-
-    form.addEventListener("submit", function(e) {
-      e.preventDefault();
-
-      const month = document.getElementById("month").value.trim();
-      const rental = parseFloat(document.getElementById("rental").value) || 0;
-      const investments = parseFloat(document.getElementById("investments").value) || 0;
-      const bills = parseFloat(document.getElementById("bills").value) || 0;
-
-      const income = rental;
-      const expenses = bills;
-      const totalInvestments = investments;
-      const netBalance = income - (expenses + totalInvestments);
-
-      const entry = { month, income, expenses, investments: totalInvestments, netBalance };
-
-      const existingIndex = historyData.findIndex(e => e.month.toLowerCase() === month.toLowerCase());
-      if (existingIndex !== -1) {
-        historyData[existingIndex] = entry;
-        alert(`Data for "${month}" has been updated.`);
-      } else {
-        historyData.push(entry);
-      }
-
-      localStorage.setItem("financeHistory", JSON.stringify(historyData));
-      renderTable();
-      form.reset();
-    });
-
-    renderTable();
+    };
   </script>
 </body>
 </html>
