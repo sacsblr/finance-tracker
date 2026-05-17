@@ -4,210 +4,173 @@
   <meta charset="UTF-8">
   <title>Monthly Finance Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; }
-    h2 { text-align: center; }
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+    h1 { text-align: center; }
+    form { max-width: 600px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; }
     label { display: block; margin-top: 10px; }
     input { width: 100%; padding: 8px; margin-top: 5px; }
-    button { margin-top: 15px; padding: 10px; background: #0078d7; color: white; border: none; cursor: pointer; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    button { margin-top: 15px; padding: 10px 20px; }
+    table { border-collapse: collapse; margin: 20px auto; width: 95%; background: #fff; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background: #eee; }
-    .summary-box { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
-    .delete-btn { background: #d9534f; color: white; border: none; padding: 8px 12px; cursor: pointer; margin-top: 10px; }
-    #trackerSection { display: none; }
+    tfoot td { font-weight: bold; background: #f0f0f0; }
+    #clearBtn { display: block; margin: 20px auto; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: crimson; color: #fff; }
+    .deleteBtn { background: darkred; color: #fff; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
   </style>
 </head>
 <body>
-  <!-- Login -->
-  <div id="loginSection">
-    <h2>Login</h2>
-    <label>Username:</label>
-    <input type="text" id="loginUser" required>
-    <label>Password:</label>
-    <input type="password" id="loginPass" required>
+  <h1>Monthly Finance Tracker</h1>
+
+  <!-- Login Screen -->
+  <form id="loginForm">
+    <label>Username: <input type="text" id="username" required></label>
+    <label>Password: <input type="password" id="password" required></label>
     <button type="submit">Login</button>
-    <p id="loginMessage" style="color:red;"></p>
-  </div>
+  </form>
 
-  <!-- Tracker -->
-  <div id="trackerSection">
-    <h2>Monthly Finance Tracker</h2>
-    <form id="financeForm">
-      <label>Month:</label>
-      <input type="text" id="month" placeholder="e.g. May 2026" required>
-      <label>Rental Income:</label>
-      <input type="number" id="rental" required>
-      <label>Investments:</label>
-      <input type="number" id="investments" required>
-      <label>Bill Payments:</label>
-      <input type="number" id="bills" required>
-      <button type="submit">Save Monthly Data</button>
-    </form>
+  <!-- Data Entry Form -->
+  <form id="financeForm" style="display:none;">
+    <label>Month: <input type="text" id="month" required></label>
+    <label>Income: <input type="number" id="income" required></label>
+    <label>Expenses: <input type="number" id="expenses" required></label>
+    <label>Investments: <input type="number" id="investments" required></label>
+    <button type="submit">Add Data</button>
+  </form>
 
-    <button class="delete-btn" onclick="deleteSelectedRows()">Delete Selected Rows</button>
-    <button onclick="exportData()">Export Data</button>
-    <input type="file" id="importFile" accept=".json" onchange="importData(event)">
-    <label for="importFile"><small>Import JSON</small></label>
+  <!-- Summary Table -->
+  <table id="summaryTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Income (₹)</th>
+        <th>Expenses (₹)</th>
+        <th>Investments (₹)</th>
+        <th>Net Balance (₹)</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr>
+        <td>Totals</td>
+        <td id="totalIncome">0</td>
+        <td id="totalExpenses">0</td>
+        <td id="totalInvestments">0</td>
+        <td id="totalNetBalance">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
 
-    <table id="historyTable">
-      <thead>
-        <tr>
-          <th>Select</th>
-          <th>Month</th>
-          <th>Income (₹)</th>
-          <th>Expenses (₹)</th>
-          <th>Investments (₹)</th>
-          <th>Net Balance (₹)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div id="overallSummary" class="summary-box">
-      <h3>Overall Summary</h3>
-      <p id="totalIncome"></p>
-      <p id="totalExpenses"></p>
-      <p id="totalInvestments"></p>
-      <p id="totalNet"></p>
-    </div>
-  </div>
+  <!-- Clear Data Button -->
+  <button id="clearBtn" style="display:none;">Clear All Data</button>
 
   <script>
-    // Hard-coded admin login
-    const adminUser = "sacsblr";
-    const adminPass = "admin";
+    const summaryTableBody = document.querySelector('#summaryTable tbody');
+    const totalIncomeCell = document.getElementById('totalIncome');
+    const totalExpensesCell = document.getElementById('totalExpenses');
+    const totalInvestmentsCell = document.getElementById('totalInvestments');
+    const totalNetBalanceCell = document.getElementById('totalNetBalance');
 
-    function login() {
-      const user = document.getElementById("loginUser").value.trim();
-      const pass = document.getElementById("loginPass").value.trim();
-      if (user === adminUser && pass === adminPass) {
-        document.getElementById("loginSection").style.display = "none";
-        document.getElementById("trackerSection").style.display = "block";
-        renderTable();
-      } else {
-        document.getElementById("loginMessage").textContent = "Invalid username or password.";
-      }
-    }
+    let totalIncome = 0, totalExpenses = 0, totalInvestments = 0, totalNetBalance = 0;
 
-    const form = document.getElementById("financeForm");
-    const historyTableBody = document.querySelector("#historyTable tbody");
-    const totalIncomeEl = document.getElementById("totalIncome");
-    const totalExpensesEl = document.getElementById("totalExpenses");
-    const totalInvestmentsEl = document.getElementById("totalInvestments");
-    const totalNetEl = document.getElementById("totalNet");
-
-    let historyData = JSON.parse(localStorage.getItem("financeHistory")) || [];
-
-    function renderTable() {
-      historyTableBody.innerHTML = "";
-      let sumIncome = 0, sumExpenses = 0, sumInvestments = 0, sumNet = 0;
-
-      historyData.forEach((entry, index) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><input type="checkbox" class="rowCheckbox" data-index="${index}"></td>
-          <td>${entry.month}</td>
-          <td>${entry.income}</td>
-          <td>${entry.expenses}</td>
-          <td>${entry.investments}</td>
-          <td>${entry.netBalance}</td>
-        `;
-        historyTableBody.appendChild(row);
-
-        sumIncome += entry.income;
-        sumExpenses += entry.expenses;
-        sumInvestments += entry.investments;
-        sumNet += entry.netBalance;
-      });
-
-      if (historyData.length === 0) {
-        totalIncomeEl.textContent = "Total Income: No data yet";
-        totalExpensesEl.textContent = "Total Expenses: No data yet";
-        totalInvestmentsEl.textContent = "Total Investments: No data yet";
-        totalNetEl.textContent = "Cumulative Net Balance: No data yet";
-      } else {
-        totalIncomeEl.textContent = "Total Income: ₹" + sumIncome;
-        totalExpensesEl.textContent = "Total Expenses: ₹" + sumExpenses;
-        totalInvestmentsEl.textContent = "Total Investments: ₹" + sumInvestments;
-        totalNetEl.textContent = "Cumulative Net Balance: ₹" + sumNet;
-      }
-    }
-
-    function deleteSelectedRows() {
-      const checkboxes = document.querySelectorAll(".rowCheckbox:checked");
-      if (checkboxes.length === 0) {
-        alert("Please select at least one row to delete.");
-        return;
-      }
-      const indicesToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-      indicesToDelete.sort((a, b) => b - a).forEach(idx => historyData.splice(idx, 1));
-      localStorage.setItem("financeHistory", JSON.stringify(historyData));
-      renderTable();
-    }
-
-    form.addEventListener("submit", function(e) {
+    // Login logic
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
-
-      const month = document.getElementById("month").value.trim();
-      const rental = parseFloat(document.getElementById("rental").value) || 0;
-      const investments = parseFloat(document.getElementById("investments").value) || 0;
-      const bills = parseFloat(document.getElementById("bills").value) || 0;
-
-      const income = rental;
-      const expenses = bills;
-      const totalInvestments = investments;
-      const netBalance = income - (expenses + totalInvestments);
-
-      const entry = { month, income, expenses, investments: totalInvestments, netBalance };
-
-      const existingIndex = historyData.findIndex(e => e.month.toLowerCase() === month.toLowerCase());
-      if (existingIndex !== -1) {
-        historyData[existingIndex] = entry;
-        alert(`Data for "${month}" has been updated.`);
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      if(user && pass) {
+        alert("Login successful!");
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('financeForm').style.display = 'block';
+        document.getElementById('summaryTable').style.display = 'table';
+        document.getElementById('clearBtn').style.display = 'block';
+        loadData();
       } else {
-        historyData.push(entry);
+        alert("Enter valid credentials");
       }
-
-      localStorage.setItem("financeHistory", JSON.stringify(historyData));
-      renderTable();
-      form.reset();
     });
 
-    // Export data as JSON file
-    function exportData() {
-      const dataStr = JSON.stringify(historyData, null, 2);
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "financeHistory.json";
-      a.click();
-      URL.revokeObjectURL(url);
+    // Load saved data
+    function loadData() {
+      summaryTableBody.innerHTML = '';
+      totalIncome = 0;
+      totalExpenses = 0;
+      totalInvestments = 0;
+      totalNetBalance = 0;
+
+      const savedData = JSON.parse(localStorage.getItem('financeData')) || [];
+      savedData.forEach(entry => addEntry(entry.month, entry.income, entry.expenses, entry.investments, false));
     }
 
-    // Import data from JSON file
-    function importData(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const imported = JSON.parse(e.target.result);
-          if (Array.isArray(imported)) {
-            historyData = imported;
-            localStorage.setItem("financeHistory", JSON.stringify(historyData));
-            renderTable();
-            alert("Data imported successfully!");
-          } else {
-            alert("Invalid JSON format.");
-          }
-        } catch {
-          alert("Error reading file.");
-        }
-      };
-      reader.readAsText(file);
+    document.getElementById('financeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const month = document.getElementById('month').value;
+      const income = parseFloat(document.getElementById('income').value);
+      const expenses = parseFloat(document.getElementById('expenses').value);
+      const investments = parseFloat(document.getElementById('investments').value);
+
+      addEntry(month, income, expenses, investments, true);
+      this.reset();
+    });
+
+    function addEntry(month, income, expenses, investments, save=true) {
+      const netBalance = income - expenses - investments;
+
+      // Update table
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${month}</td><td>${income}</td><td>${expenses}</td><td>${investments}</td><td>${netBalance}</td>
+                       <td><button class="deleteBtn">Delete</button></td>`;
+      summaryTableBody.appendChild(row);
+
+      // Delete row handler
+      row.querySelector('.deleteBtn').addEventListener('click', () => {
+        summaryTableBody.removeChild(row);
+        totalIncome -= income;
+        totalExpenses -= expenses;
+        totalInvestments -= investments;
+        totalNetBalance -= netBalance;
+        totalIncomeCell.textContent = totalIncome;
+        totalExpensesCell.textContent = totalExpenses;
+        totalInvestmentsCell.textContent = totalInvestments;
+        totalNetBalanceCell.textContent = totalNetBalance;
+
+        let savedData = JSON.parse(localStorage.getItem('financeData')) || [];
+        savedData = savedData.filter(d => !(d.month === month && d.income === income && d.expenses === expenses && d.investments === investments));
+        localStorage.setItem('financeData', JSON.stringify(savedData));
+      });
+
+      // Update totals
+      totalIncome += income;
+      totalExpenses += expenses;
+      totalInvestments += investments;
+      totalNetBalance += netBalance;
+      totalIncomeCell.textContent = totalIncome;
+      totalExpensesCell.textContent = totalExpenses;
+      totalInvestmentsCell.textContent = totalInvestments;
+      totalNetBalanceCell.textContent = totalNetBalance;
+
+      // Save to LocalStorage
+      if(save) {
+        const savedData = JSON.parse(localStorage.getItem('financeData')) || [];
+        savedData.push({ month, income, expenses, investments });
+        localStorage.setItem('financeData', JSON.stringify(savedData));
+      }
     }
 
-    // Render table on load
-    renderTable();
-  </script
+    // Clear all data
+    document.getElementById('clearBtn').addEventListener('click', function() {
+      localStorage.removeItem('financeData');
+      summaryTableBody.innerHTML = '';
+      totalIncome = 0;
+      totalExpenses = 0;
+      totalInvestments = 0;
+      totalNetBalance = 0;
+      totalIncomeCell.textContent = 0;
+      totalExpensesCell.textContent = 0;
+      totalInvestmentsCell.textContent = 0;
+      totalNetBalanceCell.textContent = 0;
+    });
+  </script>
+</body>
+</html>
