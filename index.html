@@ -14,11 +14,11 @@
     th { background: #eee; }
     .summary-box { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
     .delete-btn { background: #d9534f; color: white; border: none; padding: 8px 12px; cursor: pointer; margin-top: 10px; }
-    #trackerSection { display: none; } /* hidden until login */
+    #trackerSection { display: none; }
   </style>
 </head>
 <body>
-  <!-- Login Screen -->
+  <!-- Login -->
   <div id="loginSection">
     <h2>Login</h2>
     <label>Username:</label>
@@ -29,22 +29,18 @@
     <p id="loginMessage" style="color:red;"></p>
   </div>
 
-  <!-- Tracker Section (hidden until login) -->
+  <!-- Tracker -->
   <div id="trackerSection">
     <h2>Monthly Finance Tracker</h2>
     <form id="financeForm">
       <label>Month:</label>
       <input type="text" id="month" placeholder="e.g. May 2026" required>
-
       <label>Rental Income:</label>
       <input type="number" id="rental" required>
-
       <label>Investments:</label>
       <input type="number" id="investments" required>
-
       <label>Bill Payments:</label>
       <input type="number" id="bills" required>
-
       <button type="submit">Save Monthly Data</button>
     </form>
 
@@ -73,8 +69,26 @@
     </div>
   </div>
 
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
   <script>
-    // Hard-coded admin user
+    // Replace with your Firebase config from console
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "finance-tracker-sa.firebaseapp.com",
+      projectId: "finance-tracker-sa",
+      storageBucket: "finance-tracker-sa.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Hard-coded admin login
     const adminUser = "sacsblr";
     const adminPass = "admin";
 
@@ -84,7 +98,7 @@
       if (user === adminUser && pass === adminPass) {
         document.getElementById("loginSection").style.display = "none";
         document.getElementById("trackerSection").style.display = "block";
-        renderTable();
+        loadData();
       } else {
         document.getElementById("loginMessage").textContent = "Invalid username or password.";
       }
@@ -97,7 +111,13 @@
     const totalInvestmentsEl = document.getElementById("totalInvestments");
     const totalNetEl = document.getElementById("totalNet");
 
-    let historyData = JSON.parse(localStorage.getItem("financeHistory")) || [];
+    let historyData = [];
+
+    async function loadData() {
+      const snapshot = await db.collection("financeHistory").get();
+      historyData = snapshot.docs.map(doc => doc.data());
+      renderTable();
+    }
 
     function renderTable() {
       historyTableBody.innerHTML = "";
@@ -121,32 +141,28 @@
         sumNet += entry.netBalance;
       });
 
-      if (historyData.length === 0) {
-        totalIncomeEl.textContent = "Total Income: No data yet";
-        totalExpensesEl.textContent = "Total Expenses: No data yet";
-        totalInvestmentsEl.textContent = "Total Investments: No data yet";
-        totalNetEl.textContent = "Cumulative Net Balance: No data yet";
-      } else {
-        totalIncomeEl.textContent = "Total Income: ₹" + sumIncome;
-        totalExpensesEl.textContent = "Total Expenses: ₹" + sumExpenses;
-        totalInvestmentsEl.textContent = "Total Investments: ₹" + sumInvestments;
-        totalNetEl.textContent = "Cumulative Net Balance: ₹" + sumNet;
-      }
+      totalIncomeEl.textContent = historyData.length ? "Total Income: ₹" + sumIncome : "Total Income: No data yet";
+      totalExpensesEl.textContent = historyData.length ? "Total Expenses: ₹" + sumExpenses : "Total Expenses: No data yet";
+      totalInvestmentsEl.textContent = historyData.length ? "Total Investments: ₹" + sumInvestments : "Total Investments: No data yet";
+      totalNetEl.textContent = historyData.length ? "Cumulative Net Balance: ₹" + sumNet : "Cumulative Net Balance: No data yet";
     }
 
-    function deleteSelectedRows() {
+    async function deleteSelectedRows() {
       const checkboxes = document.querySelectorAll(".rowCheckbox:checked");
       if (checkboxes.length === 0) {
         alert("Please select at least one row to delete.");
         return;
       }
       const indicesToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-      indicesToDelete.sort((a, b) => b - a).forEach(idx => historyData.splice(idx, 1));
-      localStorage.setItem("financeHistory", JSON.stringify(historyData));
+      indicesToDelete.sort((a, b) => b - a).forEach(async idx => {
+        const month = historyData[idx].month;
+        await db.collection("financeHistory").doc(month).delete();
+        historyData.splice(idx, 1);
+      });
       renderTable();
     }
 
-    form.addEventListener("submit", function(e) {
+    form.addEventListener("submit", async function(e) {
       e.preventDefault();
 
       const month = document.getElementById("month").value.trim();
@@ -161,16 +177,8 @@
 
       const entry = { month, income, expenses, investments: totalInvestments, netBalance };
 
-      const existingIndex = historyData.findIndex(e => e.month.toLowerCase() === month.toLowerCase());
-      if (existingIndex !== -1) {
-        historyData[existingIndex] = entry;
-        alert(`Data for "${month}" has been updated.`);
-      } else {
-        historyData.push(entry);
-      }
-
-      localStorage.setItem("financeHistory", JSON.stringify(historyData));
-      renderTable();
+      await db.collection("financeHistory").doc(month).set(entry);
+      await loadData();
       form.reset();
     });
   </script>
