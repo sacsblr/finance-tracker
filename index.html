@@ -69,25 +69,7 @@
     </div>
   </div>
 
-  <!-- Firebase compat SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
   <script>
-    // 🔑 Replace with your actual Firebase config from console
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "finance-tracker-sa.firebaseapp.com",
-      projectId: "finance-tracker-sa",
-      storageBucket: "finance-tracker-sa.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    // Initialize Firebase (compat style)
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
     // Hard-coded admin login
     const adminUser = "sacsblr";
     const adminPass = "admin";
@@ -98,7 +80,7 @@
       if (user === adminUser && pass === adminPass) {
         document.getElementById("loginSection").style.display = "none";
         document.getElementById("trackerSection").style.display = "block";
-        loadData();
+        renderTable();
       } else {
         document.getElementById("loginMessage").textContent = "Invalid username or password.";
       }
@@ -111,13 +93,7 @@
     const totalInvestmentsEl = document.getElementById("totalInvestments");
     const totalNetEl = document.getElementById("totalNet");
 
-    let historyData = [];
-
-    async function loadData() {
-      const snapshot = await db.collection("financeHistory").get();
-      historyData = snapshot.docs.map(doc => doc.data());
-      renderTable();
-    }
+    let historyData = JSON.parse(localStorage.getItem("financeHistory")) || [];
 
     function renderTable() {
       historyTableBody.innerHTML = "";
@@ -141,28 +117,32 @@
         sumNet += entry.netBalance;
       });
 
-      totalIncomeEl.textContent = historyData.length ? "Total Income: ₹" + sumIncome : "Total Income: No data yet";
-      totalExpensesEl.textContent = historyData.length ? "Total Expenses: ₹" + sumExpenses : "Total Expenses: No data yet";
-      totalInvestmentsEl.textContent = historyData.length ? "Total Investments: ₹" + sumInvestments : "Total Investments: No data yet";
-      totalNetEl.textContent = historyData.length ? "Cumulative Net Balance: ₹" + sumNet : "Cumulative Net Balance: No data yet";
+      if (historyData.length === 0) {
+        totalIncomeEl.textContent = "Total Income: No data yet";
+        totalExpensesEl.textContent = "Total Expenses: No data yet";
+        totalInvestmentsEl.textContent = "Total Investments: No data yet";
+        totalNetEl.textContent = "Cumulative Net Balance: No data yet";
+      } else {
+        totalIncomeEl.textContent = "Total Income: ₹" + sumIncome;
+        totalExpensesEl.textContent = "Total Expenses: ₹" + sumExpenses;
+        totalInvestmentsEl.textContent = "Total Investments: ₹" + sumInvestments;
+        totalNetEl.textContent = "Cumulative Net Balance: ₹" + sumNet;
+      }
     }
 
-    async function deleteSelectedRows() {
+    function deleteSelectedRows() {
       const checkboxes = document.querySelectorAll(".rowCheckbox:checked");
       if (checkboxes.length === 0) {
         alert("Please select at least one row to delete.");
         return;
       }
       const indicesToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-      indicesToDelete.sort((a, b) => b - a).forEach(async idx => {
-        const month = historyData[idx].month;
-        await db.collection("financeHistory").doc(month).delete();
-        historyData.splice(idx, 1);
-      });
+      indicesToDelete.sort((a, b) => b - a).forEach(idx => historyData.splice(idx, 1));
+      localStorage.setItem("financeHistory", JSON.stringify(historyData));
       renderTable();
     }
 
-    form.addEventListener("submit", async function(e) {
+    form.addEventListener("submit", function(e) {
       e.preventDefault();
 
       const month = document.getElementById("month").value.trim();
@@ -177,10 +157,21 @@
 
       const entry = { month, income, expenses, investments: totalInvestments, netBalance };
 
-      await db.collection("financeHistory").doc(month).set(entry);
-      await loadData();
+      const existingIndex = historyData.findIndex(e => e.month.toLowerCase() === month.toLowerCase());
+      if (existingIndex !== -1) {
+        historyData[existingIndex] = entry;
+        alert(`Data for "${month}" has been updated.`);
+      } else {
+        historyData.push(entry);
+      }
+
+      localStorage.setItem("financeHistory", JSON.stringify(historyData));
+      renderTable();
       form.reset();
     });
+
+    // Render table on load
+    renderTable();
   </script>
 </body>
 </html>
