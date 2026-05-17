@@ -14,53 +14,82 @@
     th { background: #eee; }
     .summary-box { margin-top: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
     .delete-btn { background: #d9534f; color: white; border: none; padding: 8px 12px; cursor: pointer; margin-top: 10px; }
+    #trackerSection { display: none; } /* hidden until login */
   </style>
 </head>
 <body>
-  <h2>Monthly Finance Tracker</h2>
-  <form id="financeForm">
-    <label>Month:</label>
-    <input type="text" id="month" placeholder="e.g. May 2026" required>
+  <!-- Login Screen -->
+  <div id="loginSection">
+    <h2>Login</h2>
+    <label>Username:</label>
+    <input type="text" id="loginUser" required>
+    <label>Password:</label>
+    <input type="password" id="loginPass" required>
+    <button onclick="login()">Login</button>
+    <p id="loginMessage" style="color:red;"></p>
+  </div>
 
-    <label>Rental Income:</label>
-    <input type="number" id="rental" required>
+  <!-- Tracker Section (hidden until login) -->
+  <div id="trackerSection">
+    <h2>Monthly Finance Tracker</h2>
+    <form id="financeForm">
+      <label>Month:</label>
+      <input type="text" id="month" placeholder="e.g. May 2026" required>
 
-    <label>Investments:</label>
-    <input type="number" id="investments" required>
+      <label>Rental Income:</label>
+      <input type="number" id="rental" required>
 
-    <label>Bill Payments:</label>
-    <input type="number" id="bills" required>
+      <label>Investments:</label>
+      <input type="number" id="investments" required>
 
-    <button type="submit">Save Monthly Data</button>
-  </form>
+      <label>Bill Payments:</label>
+      <input type="number" id="bills" required>
 
-  <!-- Delete button in the middle section -->
-  <button class="delete-btn" onclick="deleteSelectedRows()">Delete Selected Rows</button>
+      <button type="submit">Save Monthly Data</button>
+    </form>
 
-  <table id="historyTable">
-    <thead>
-      <tr>
-        <th>Select</th>
-        <th>Month</th>
-        <th>Income (₹)</th>
-        <th>Expenses (₹)</th>
-        <th>Investments (₹)</th>
-        <th>Net Balance (₹)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <button class="delete-btn" onclick="deleteSelectedRows()">Delete Selected Rows</button>
 
-  <!-- ✅ Summary section -->
-  <div id="overallSummary" class="summary-box">
-    <h3>Overall Summary</h3>
-    <p id="totalIncome"></p>
-    <p id="totalExpenses"></p>
-    <p id="totalInvestments"></p>
-    <p id="totalNet"></p>
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Select</th>
+          <th>Month</th>
+          <th>Income (₹)</th>
+          <th>Expenses (₹)</th>
+          <th>Investments (₹)</th>
+          <th>Net Balance (₹)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="overallSummary" class="summary-box">
+      <h3>Overall Summary</h3>
+      <p id="totalIncome"></p>
+      <p id="totalExpenses"></p>
+      <p id="totalInvestments"></p>
+      <p id="totalNet"></p>
+    </div>
   </div>
 
   <script>
+    // Hard-coded admin user
+    const adminUser = "sacsblr";
+    const adminPass = "admin";
+
+    function login() {
+      const user = document.getElementById("loginUser").value.trim();
+      const pass = document.getElementById("loginPass").value.trim();
+      if (user === adminUser && pass === adminPass) {
+        document.getElementById("loginSection").style.display = "none";
+        document.getElementById("trackerSection").style.display = "block";
+        renderTable();
+      } else {
+        document.getElementById("loginMessage").textContent = "Invalid username or password.";
+      }
+    }
+
     const form = document.getElementById("financeForm");
     const historyTableBody = document.querySelector("#historyTable tbody");
     const totalIncomeEl = document.getElementById("totalIncome");
@@ -144,8 +173,6 @@
       renderTable();
       form.reset();
     });
-
-    renderTable();
   </script>
 </body>
 </html>
